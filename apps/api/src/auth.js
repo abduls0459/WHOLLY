@@ -23,16 +23,18 @@ export function hashRefreshToken(token) {
 }
 
 export function setRefreshCookie(response, token) {
+  const production = process.env.NODE_ENV === 'production';
   response.cookie(cookieName, token, {
-    httpOnly: true, secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax', path: '/api/v1/auth', maxAge: refreshLifetimeMs,
+    httpOnly: true, secure: production,
+    sameSite: production ? 'none' : 'lax', path: '/api/v1/auth', maxAge: refreshLifetimeMs,
   });
 }
 
 export function clearRefreshCookie(response) {
+  const production = process.env.NODE_ENV === 'production';
   response.clearCookie(cookieName, {
-    httpOnly: true, secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax', path: '/api/v1/auth',
+    httpOnly: true, secure: production,
+    sameSite: production ? 'none' : 'lax', path: '/api/v1/auth',
   });
 }
 

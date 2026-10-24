@@ -52,9 +52,10 @@ integration('MongoDB API integration', () => {
     expect(updated.status).toBe(200);
     expect(updated.body.settings.fitness_goal).toBe('fat_loss');
 
-    const login = await request(app).post('/api/v1/auth/login').send({ email, password: 'Wholly-password-2026' });
+    const login = await agent.post('/api/v1/auth/login').send({ email, password: 'Wholly-password-2026' });
     expect(login.status).toBe(200);
     expect(login.body.accessToken).toBeTruthy();
+    expect(login.headers['set-cookie'][0]).toContain('HttpOnly');
 
     const rotated = await agent.post('/api/v1/auth/refresh');
     expect(rotated.status).toBe(200);
@@ -74,7 +75,25 @@ integration('MongoDB API integration', () => {
     const subjects = await request(app).get('/api/v1/subjects').set(auth);
     expect(subjects.body.subjects[0].completion_percent).toBe(100);
 
-    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+    const dateParts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).formatToParts(new Date()).map(({ type, value }) => [type, value]));
+    const today = `${dateParts.year}-${dateParts.month}-${dateParts.day}`;
+    const manual = await request(app).post('/api/v1/study/sessions').set(auth).send({
+      subjectId, date: today, minutes: 25, note: 'Manual entry',
+    });
+    expect(manual.status).toBe(201);
+    expect(manual.body.session.source).toBe('manual');
+
+    const timerStart = await request(app).post('/api/v1/study/timer/start').set(auth).send({ subjectId });
+    expect(timerStart.status).toBe(201);
+    await StudyTimer.updateOne({ user: userId }, { $set: { activeSince: new Date(Date.now() - 120_000) } });
+    const timerStop = await request(app).post('/api/v1/study/timer/stop').set(auth).send({});
+    expect(timerStop.status).toBe(200);
+    expect(timerStop.body.saved).toBe(true);
+    const savedSessions = await request(app).get('/api/v1/study/sessions?from=' + today + '&to=' + today).set(auth);
+    expect(savedSessions.body.sessions.map((session) => session.source).sort()).toEqual(['manual', 'timer']);
+
     const water = await request(app).post('/api/v1/fitness/water').set(auth).send({ amountMl: 250, date: today });
     expect(water.status).toBe(201);
     const savedWater = await request(app).get('/api/v1/fitness/water?date=' + today).set(auth);

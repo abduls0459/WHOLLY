@@ -309,8 +309,10 @@ studyRouter.post('/study/timer/stop', async (request, response) => {
   if (timer.activeSince) segments.push({ start: timer.activeSince, end: now });
   const totalSeconds = segments.reduce((sum, segment) => sum + Math.max(0, Math.floor((segment.end - segment.start) / 1000)), 0);
   if (totalSeconds < 60 && !parsed.data.discardShort) return fail(response, 409, 'SESSION_TOO_SHORT', 'This session is ' + totalSeconds + ' seconds. Stop and discard it?');
-  await StudyTimer.deleteOne({ _id: timer._id, user: request.userId });
-  if (totalSeconds < 60) return response.json({ discarded: true, durationSec: totalSeconds });
+  if (totalSeconds < 60) {
+    await StudyTimer.deleteOne({ _id: timer._id, user: request.userId });
+    return response.json({ discarded: true, durationSec: totalSeconds });
+  }
   const user = await User.findById(request.userId).select('settings.timezone');
   const timezone = user?.settings.timezone ?? 'UTC';
   const grouped = new Map();
@@ -328,6 +330,7 @@ studyRouter.post('/study/timer/stop', async (request, response) => {
     startedAt: timer.startedAt, endedAt: now, durationSec, source: 'timer',
   }));
   if (sessions.length) await StudySession.insertMany(sessions);
+  await StudyTimer.deleteOne({ _id: timer._id, user: request.userId });
   return response.json({ saved: true, durationSec: totalSeconds });
 });
 

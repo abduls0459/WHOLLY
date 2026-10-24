@@ -15,6 +15,6 @@ export function errorHandler(error, _request, response, _next) {
   if (error?.code === 11000) {
     return response.status(409).json({ error: { code: 'CONFLICT', message: 'This record already exists.' } });
   }
-  console.error('API request failed:', error?.name ?? 'UnknownError');
+  console.error('API request failed:', error?.stack ?? error?.message ?? error?.name ?? 'UnknownError');
   return response.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Something went wrong. Please try again.' } });
 }

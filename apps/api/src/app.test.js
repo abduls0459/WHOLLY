@@ -2,6 +2,7 @@ import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import { createApp } from './app.js';
 import { createAccessToken } from './auth.js';
+import { publicUser } from './services/user.js';
 
 process.env.JWT_ACCESS_SECRET = 'wholly-test-secret-with-at-least-thirty-two-characters';
 
@@ -12,6 +13,11 @@ describe('API foundation', () => {
     const response = await request(app).get('/api/v1/health');
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ status: 'ok', service: 'wholly-api' });
+  });
+
+  it('serializes account profiles that do not have saved settings yet', () => {
+    expect(publicUser({ _id: '507f1f77bcf86cd799439011', name: 'New user', email: 'new@example.test' }))
+      .toMatchObject({ id: '507f1f77bcf86cd799439011', name: 'New user', email: 'new@example.test' });
   });
 
   it('rejects malformed registration data before database access', async () => {

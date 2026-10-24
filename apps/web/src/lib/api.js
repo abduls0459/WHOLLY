@@ -1,4 +1,5 @@
 let accessToken = "";
+let refreshPromise = null;
 const apiBase = import.meta.env.VITE_API_BASE_URL || "/api/v1";
 function setAccessToken(token) {
   accessToken = token;
@@ -6,6 +7,20 @@ function setAccessToken(token) {
 async function readResponse(response) {
   if (response.status === 204) return void 0;
   return response.json().catch(() => null);
+}
+function refreshAccessToken() {
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      const response = await fetch(apiBase + "/auth/refresh", { method: "POST", credentials: "include" });
+      const body = await readResponse(response);
+      if (!response.ok || !body?.accessToken) throw new Error("Session expired.");
+      setAccessToken(body.accessToken);
+      return body.accessToken;
+    })().finally(() => {
+      refreshPromise = null;
+    });
+  }
+  return refreshPromise;
 }
 async function send(path, init, retry = true) {
   const response = await fetch(apiBase + path, {
@@ -19,10 +34,7 @@ async function send(path, init, retry = true) {
   });
   if (response.status === 401 && accessToken && retry && !path.startsWith("/auth/")) {
     try {
-      const refreshedResponse = await fetch(apiBase + "/auth/refresh", { method: "POST", credentials: "include" });
-      const refreshed = await readResponse(refreshedResponse);
-      if (!refreshedResponse.ok || !refreshed?.accessToken) throw new Error("Session expired.");
-      setAccessToken(refreshed.accessToken);
+      await refreshAccessToken();
       return send(path, init, false);
     } catch {
       setAccessToken("");
@@ -53,8 +65,7 @@ function getDashboard() {
   return request("/dashboard");
 }
 async function restoreSession() {
-  const refreshed = await request("/auth/refresh", { method: "POST" });
-  setAccessToken(refreshed.accessToken);
+  await refreshAccessToken();
   const result = await request("/me");
   return result.user;
 }

@@ -228,7 +228,12 @@ function StudySection({ profile }) {
   async function submitManualSession(event) {
     event.preventDefault();
     await withBusy(async () => {
-      await send("/study/sessions", "POST", { ...manualDraft, minutes: Number(manualDraft.minutes), note: manualDraft.note.trim() || null });
+      await send("/study/sessions", "POST", {
+        subjectId: manualDraft.subjectId || activeSubjects[0]?.id || "",
+        date: manualDraft.date,
+        minutes: Number(manualDraft.minutes),
+        note: manualDraft.note.trim() || null
+      });
       setManualDraft((current) => ({ ...current, minutes: 30, note: "" }));
       await loadSessions();
       await loadSubjects();

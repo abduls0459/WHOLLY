@@ -19,9 +19,10 @@ export function publicSettings(settings) {
 }
 
 export function publicUser(user) {
+  const settings = user.settings?.toObject?.() ?? user.settings ?? {};
   return {
     id: String(user._id), name: user.name, email: user.email,
-    ...publicSettings(user.settings.toObject()),
+    ...publicSettings(settings),
   };
 }
 
