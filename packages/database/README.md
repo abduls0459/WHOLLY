@@ -1,0 +1,1 @@
+Legacy PostgreSQL migration files from the previous implementation are preserved in migrations/ as historical source material. The active API no longer applies them and does not depend on PostgreSQL. See docs/postgresql-to-mongodb.md for the data-transfer status and a safe migration outline.
